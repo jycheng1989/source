@@ -8,7 +8,7 @@ module source_2d
   integer :: length
   real (8) :: denergy_src, cut_energy_src ! grid size and cutoff of energy
   real (8) :: gamma_src ! frequency of the source rate 
-  real (8), allocatable :: df_src(:,:),data_source(:,:),g_local_rev(:,:),g_local(:,:), vol_local(:,:), vol_local_space(:) ! perturbed f in (psi, energy) space
+  real (8), allocatable :: df_src(:,:),data_source(:,:),g_local_rev(:,:),g_local(:,:), vol_local(:,:), vol_local_space(:),f_src(:,:) ! perturbed f in (psi, energy) space
   real (8), allocatable :: dn_src(:),n_profile_list(:),t_profile_list(:) ! velocity-space integral of perturbed f in (psi, energy) space
   real (8), allocatable :: n_src(:) ! velocity-space intergral of f0 in (psi, energy) space
 
@@ -33,7 +33,7 @@ contains
     cut_energy_src=vcut_in 
     num_psi_src=grid%npsi_surf2 
     denergy_src=cut_energy_src/real(num_energy_src-1)
-    allocate(df_src(num_psi_src,num_energy_src),g_local_rev(num_psi_src,num_energy_src),g_local(num_psi_src,num_energy_src),vol_local(num_psi_src,num_energy_src))
+    allocate(df_src(num_psi_src,num_energy_src),f_src(num_psi_src,num_energy_src),g_local_rev(num_psi_src,num_energy_src),g_local(num_psi_src,num_energy_src),vol_local(num_psi_src,num_energy_src))
     allocate(dn_src(num_psi_src),vol_local_space(num_psi_src))
     allocate(n_src(num_psi_src))
     allocate(n_profile_list(num_psi_src),t_profile_list(num_psi_src))
@@ -77,6 +77,7 @@ contains
     np=sp%num
     allocate(source_ptl%phase(ict2,np),source_ptl%gid(np)) 
     df_src=0D0
+    f_src=0D0
     dn_src=0D0
     n_src=0D0
     g_local_rev=0D0
@@ -115,7 +116,7 @@ contains
     real (8) :: wpsi,we,pn,deltaf,mu,rho,ter,en_nor,en_ev,w00,w01,w10,w11,g_rev
     real (8) :: n_profile,dn_tmp,n_tmp,f_tmp,g_tmp,df_tmp,vfrac1,vfrac,vfrac2,v,dv,d_tmp
     real (8), dimension(:), allocatable :: psi_tmp
-    real (8), dimension(:,:), allocatable :: df_src_tmp,g_src_tmp,g_local_rev_tmp,information_save
+    real (8), dimension(:,:), allocatable :: df_src_tmp,f_src_tmp,g_src_tmp,g_local_rev_tmp,information_save
     integer, dimension(:,:), allocatable :: slice_save
     logical, dimension(:), allocatable :: particle_save
     integer, parameter :: sp_type=1 !ion
@@ -123,7 +124,7 @@ contains
     integer, parameter :: ict2=ptl_nphase+ptl_nconst
     real (8), external :: b_interpol,psi_interpol
 
-    allocate(df_src_tmp(num_psi_src,num_energy_src))
+    allocate(df_src_tmp(num_psi_src,num_energy_src),f_src_tmp(num_psi_src,num_energy_src))
     allocate(g_src_tmp(num_psi_src,num_energy_src))
     allocate(g_local_rev_tmp(num_psi_src,num_energy_src))
     length=sp%num
@@ -140,6 +141,7 @@ contains
     psi_tmp=grid%psi_surf2
 
     df_src_tmp(:,:)=0D0
+    f_src_tmp(:,:)=0D0
     g_src_tmp(:,:)=0D0
     g_local_rev_tmp(:,:)=0D0
     vol_local(:,:)=0.0
@@ -256,6 +258,17 @@ contains
        !!$omp atomic update
        df_src_tmp(ip+1,ie+1)=df_src_tmp(ip+1,ie+1)+deltaf*w11
 
+
+       !f_0/g
+       deltaf=ptli%ph(AIND(i),piw0)
+       f_src_tmp(ip,ie)=f_src_tmp(ip,ie)+deltaf*w00
+       !!$omp atomic update
+       f_src_tmp(ip,ie+1)=f_src_tmp(ip,ie+1)+deltaf*w01
+       !!$omp atomic update 
+       f_src_tmp(ip+1,ie)=f_src_tmp(ip+1,ie)+deltaf*w10
+       !!$omp atomic update
+       f_src_tmp(ip+1,ie+1)=f_src_tmp(ip+1,ie+1)+deltaf*w11
+
        !!$omp atomic update 
        !g_src_tmp(ip,ie)=g_src_tmp(ip,ie)+w00
        !!$omp atomic update
@@ -275,6 +288,7 @@ contains
     !reduction of df_src_tmp and g_src_tmp
     isize=num_psi_src*num_energy_src
     call mpi_allreduce(MPI_IN_PLACE,df_src_tmp,isize,MPI_REAL8,MPI_SUM,sml_comm,ierr)
+    call mpi_allreduce(MPI_IN_PLACE,f_src_tmp,isize,MPI_REAL8,MPI_SUM,sml_comm,ierr)
     !call mpi_allreduce(MPI_IN_PLACE,g_src_tmp,isize,MPI_REAL8,MPI_SUM,sml_comm,ierr)
     !call mpi_allreduce(MPI_IN_PLACE,g_local_rev_tmp,isize,MPI_REAL8,MPI_SUM,sml_comm,ierr)
 
@@ -284,6 +298,7 @@ contains
        do j=1,num_energy_src
           !if(g_src_tmp(i,j)>0.0)then
             df_src(i,j)=df_src_tmp(i,j)*vol_local(i,j)!/g_src_tmp(i,j)
+            f_src(i,j)=f_src_tmp(i,j)*vol_local(i,j)
             !g_local_rev(i,j)=g_local_rev_tmp(i,j)/g_src_tmp(i,j)
           !endif
        enddo
@@ -417,7 +432,8 @@ contains
         call adios2_define_variable(varid,io,'df_src',adios2_type_dp,2,gdims_2d,goffset_2d,ldims_2d,adios2_constant_dims,ierr)
         call adios2_define_variable(varid,io,'g_local_rev',adios2_type_dp,2,gdims_2d,goffset_2d,ldims_2d,adios2_constant_dims,ierr)
         call adios2_define_variable(varid,io,'g_local',adios2_type_dp,2,gdims_2d,goffset_2d,ldims_2d,adios2_constant_dims,ierr)
-        
+        call adios2_define_variable(varid,io,'f_src',adios2_type_dp,2,gdims_2d,goffset_2d,ldims_2d,adios2_constant_dims,ierr)
+
         gdims_1d(1)=1_8*num_psi_src
         goffset_1d(1)=0_8
         ldims_1d(1)=1_8*num_psi_src
@@ -444,6 +460,7 @@ contains
       call adios2_put(engine, "df_src", df_src, ierr)
       call adios2_put(engine, "g_local_rev", g_local_rev, ierr)
       call adios2_put(engine, "g_local", g_local, ierr)
+      call adios2_put(engine, "f_src", f_src, ierr)
       !call adios2_put(engine, "data_source", data_source, ierr)
       call adios2_put(engine, "dn_src", dn_src, ierr)
       call adios2_put(engine, "n_src", n_src, ierr)
