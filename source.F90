@@ -28,7 +28,7 @@ contains
     implicit none
     type(grid_type) :: grid
 
-    num_energy_src=nsrc_in
+    num_energy_src=esrc_in
     gamma_src=gamma_in
     cut_energy_src=vcut_in 
     num_psi_src=grid%npsi_surf2 
@@ -158,7 +158,7 @@ contains
          dv=sqrt(2.0*vfrac2)-sqrt(2.0*vfrac1)
          !v=sqrt(2.0*vfrac*sml_ev2j/ptl_mass(sp_type))
          !dv=sqrt(2.0*vfrac2*sml_ev2j/ptl_mass(sp_type))-sqrt(2.0*vfrac1*sml_ev2j/ptl_mass(sp_type))
-         vol_local(m,j)=1.0/(vol_local_space(m)*4*sml_pi*dv*v**2)*(1/(2*sml_pi*vfrac)**1.5)
+         vol_local(m,j)=1.0/(vol_local_space(m)*4*sml_pi*dv*v**2)!*(1/(2*sml_pi*vfrac)**1.5)
       enddo
      enddo
 
@@ -246,7 +246,7 @@ contains
        w11=(1-wpsi)*(1-we)
       
        !deltaf/g
-       deltaf=ptli%ph(AIND(i),piw1)*ptli%ph(AIND(i),piw0)
+       deltaf=ptli%ph(AIND(i),piw1)*ptli%ct(AIND(i),piw0)
        !if(abs(deltaf)>1)cycle
        !data_source(i,14)=deltaf
        !!$omp atomic update 
@@ -260,7 +260,7 @@ contains
 
 
        !f_0/g
-       deltaf=ptli%ph(AIND(i),piw0)
+       deltaf=ptli%ct(AIND(i),piw0)
        f_src_tmp(ip,ie)=f_src_tmp(ip,ie)+deltaf*w00
        !!$omp atomic update
        f_src_tmp(ip,ie+1)=f_src_tmp(ip,ie+1)+deltaf*w01
@@ -361,7 +361,7 @@ contains
        f_tmp=n_profile*sqrt(1D0/ter**3)*exp(-en_nor)
        !data_source(i,22)=ptli%ph(AIND(i),piw1)
        !data_source(i,23)=gamma_src*(df_tmp-f_tmp*dn_tmp/n_tmp)/(ptli%ph(AIND(i),pif0)/ptli%ph(AIND(i),piw0))
-       sp%ptl(SIND(i))%ph(AIND(i),piw1)=sp%ptl(SIND(i))%ph(AIND(i),piw1)-gamma_src*(df_tmp/(ptli%ph(AIND(i),pif0))-f_tmp/ptli%ph(AIND(i),pif0)*dn_tmp/n_tmp)
+       sp%ptl(SIND(i))%ph(AIND(i),piw1)=sp%ptl(SIND(i))%ph(AIND(i),piw1)-gamma_src*(df_tmp/(ptli%ct(AIND(i),pif0))-f_tmp/ptli%ct(AIND(i),pif0)*dn_tmp/n_tmp)
        !sp%ptl(SIND(i))%ph(AIND(i),piw2)=0.0
        !data_source(i,24)=ptli%ph(AIND(i),piw1)
        !data_source(i,25)=ptli%ph(AIND(i),piw2)
