@@ -312,8 +312,8 @@ contains
          dv=sqrt(2.0*vfrac2)-sqrt(2.0*vfrac1)
          f_tmp=n_profile*sqrt(1D0/ter**3)*exp(-vfrac/ter)
          !if(g_local_rev(m,j)==0)cycle
-         dn_tmp=dn_tmp+df_src(m,j)*4*sml_pi*dv*v**2!/(2*sml_pi)**1.5
-         n_tmp=n_tmp+f_tmp*4*sml_pi*dv*v**2!/(2*sml_pi)**1.5
+         dn_tmp=dn_tmp+df_src(m,j)*4*sml_pi*dv*v**2/(2*sml_pi)**1.5
+         n_tmp=n_tmp+f_tmp*4*sml_pi*dv*v**2/(2*sml_pi)**1.5
       enddo
       dn_src(m)=dn_tmp
       n_src(m)=n_tmp 
