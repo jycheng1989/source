@@ -8,7 +8,7 @@ module source_2d
   integer :: length
   real (8) :: denergy_src, cut_energy_src ! grid size and cutoff of energy
   real (8) :: gamma_src ! frequency of the source rate 
-  real (8), allocatable :: df_src(:,:),data_source(:,:),g_local_rev(:,:),g_local(:,:), vol_local(:,:), vol_local_space(:),f_src(:,:) ! perturbed f in (psi, energy) space
+  real (8), allocatable :: df_src(:,:),data_source(:,:),g_local_rev(:,:),g_local(:,:), vol_local(:,:), vol_local_space(:), f_src(:,:), f0_grid_src(:,:) ! perturbed f in (psi, energy) space
   real (8), allocatable :: dn_src(:),n_profile_list(:),t_profile_list(:) ! velocity-space integral of perturbed f in (psi, energy) space
   real (8), allocatable :: n_src(:) ! velocity-space intergral of f0 in (psi, energy) space
 
@@ -33,7 +33,7 @@ contains
     cut_energy_src=vcut_in 
     num_psi_src=grid%npsi_surf2 
     denergy_src=cut_energy_src/real(num_energy_src-1)
-    allocate(df_src(num_psi_src,num_energy_src),f_src(num_psi_src,num_energy_src),g_local_rev(num_psi_src,num_energy_src),g_local(num_psi_src,num_energy_src),vol_local(num_psi_src,num_energy_src))
+    allocate(df_src(num_psi_src,num_energy_src),f_src(num_psi_src,num_energy_src),f0_grid_src(num_psi_src,num_energy_src),g_local_rev(num_psi_src,num_energy_src),g_local(num_psi_src,num_energy_src),vol_local(num_psi_src,num_energy_src))
     allocate(dn_src(num_psi_src),vol_local_space(num_psi_src))
     allocate(n_src(num_psi_src))
     allocate(n_profile_list(num_psi_src),t_profile_list(num_psi_src))
@@ -78,6 +78,7 @@ contains
     allocate(source_ptl%phase(ict2,np),source_ptl%gid(np)) 
     df_src=0D0
     f_src=0D0
+    f0_grid_src=0D0
     dn_src=0D0
     n_src=0D0
     g_local_rev=0D0
@@ -326,6 +327,7 @@ contains
          v=sqrt(2.0*vfrac)
          dv=sqrt(2.0*vfrac2)-sqrt(2.0*vfrac1)
          f_tmp=n_profile*sqrt(1D0/ter**3)*exp(-vfrac/ter)
+         f0_grid_src(m,j)=f_tmp
          !if(g_local_rev(m,j)==0)cycle
          dn_tmp=dn_tmp+df_src(m,j)*4*sml_pi*dv*v**2/(2*sml_pi)**1.5
          n_tmp=n_tmp+f_tmp*4*sml_pi*dv*v**2/(2*sml_pi)**1.5
@@ -431,7 +433,7 @@ contains
         call adios2_declare_io(io,adios2obj,'source_2d',ierr)
         call adios2_define_variable(varid,io,'df_src',adios2_type_dp,2,gdims_2d,goffset_2d,ldims_2d,adios2_constant_dims,ierr)
         call adios2_define_variable(varid,io,'g_local_rev',adios2_type_dp,2,gdims_2d,goffset_2d,ldims_2d,adios2_constant_dims,ierr)
-        call adios2_define_variable(varid,io,'g_local',adios2_type_dp,2,gdims_2d,goffset_2d,ldims_2d,adios2_constant_dims,ierr)
+        call adios2_define_variable(varid,io,'f0_grid_src',adios2_type_dp,2,gdims_2d,goffset_2d,ldims_2d,adios2_constant_dims,ierr)
         call adios2_define_variable(varid,io,'f_src',adios2_type_dp,2,gdims_2d,goffset_2d,ldims_2d,adios2_constant_dims,ierr)
 
         gdims_1d(1)=1_8*num_psi_src
@@ -459,7 +461,7 @@ contains
 
       call adios2_put(engine, "df_src", df_src, ierr)
       call adios2_put(engine, "g_local_rev", g_local_rev, ierr)
-      call adios2_put(engine, "g_local", g_local, ierr)
+      call adios2_put(engine, "f0_grid_src", f0_grid_src, ierr)
       call adios2_put(engine, "f_src", f_src, ierr)
       !call adios2_put(engine, "data_source", data_source, ierr)
       call adios2_put(engine, "dn_src", dn_src, ierr)
