@@ -159,7 +159,7 @@ contains
          dv=sqrt(2.0*vfrac2)-sqrt(2.0*vfrac1)
          !v=sqrt(2.0*vfrac*sml_ev2j/ptl_mass(sp_type))
          !dv=sqrt(2.0*vfrac2*sml_ev2j/ptl_mass(sp_type))-sqrt(2.0*vfrac1*sml_ev2j/ptl_mass(sp_type))
-         vol_local(m,j)=1.0/(vol_local_space(m)*4*sml_pi*dv*v**2)!*(1/(2*sml_pi*vfrac)**1.5)
+         vol_local(m,j)=1.0/(vol_local_space(m)*4*sml_pi*dv*v**2)*(2*sml_pi)**1.5!*(1/(2*sml_pi*vfrac)**1.5)
       enddo
      enddo
 
